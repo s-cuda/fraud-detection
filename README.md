@@ -6,9 +6,9 @@ A production ML pipeline that scores financial transactions for fraud in real ti
 
 ## Demo
 
-[![Watch the live demo](screenshots/dashboard_monitor.png)](https://www.loom.com/share/d96f728510744bf8a959cc95d16feef6)
+[![Watch the live demo](screenshots/dashboard_monitor.png)](https://www.loom.com/share/d8c9246296864c50bde071662e9886c1)
 
-[Watch full demo on Loom](https://www.loom.com/share/d96f728510744bf8a959cc95d16feef6) : real transactions streaming through the API, fraud score timeline updating in real time, SHAP explainability on flagged transactions, and the interactive playground.
+[Watch full demo on Loom](https://www.loom.com/share/d8c9246296864c50bde071662e9886c1) : real transactions streaming through the API, fraud score timeline updating in real time, SHAP explainability on flagged transactions, and the interactive playground.
 
 ## Results
 
