@@ -1,0 +1,131 @@
+{
+  "checked_at": "2026-04-27 01:38:02",
+  "reference_size": 472432,
+  "current_size": 118108,
+  "features_checked": 20,
+  "features_drifted": 3,
+  "drift_share": 0.15,
+  "dataset_drift": false,
+  "feature_results": [
+    {
+      "feature": "card_time_since_first",
+      "drifted": true,
+      "statistic": 0.9379,
+      "p_value": 0.0
+    },
+    {
+      "feature": "card_age",
+      "drifted": true,
+      "statistic": 0.0808,
+      "p_value": 0.0
+    },
+    {
+      "feature": "is_new_card",
+      "drifted": true,
+      "statistic": 0.0667,
+      "p_value": 0.0
+    },
+    {
+      "feature": "uid_txn_count",
+      "drifted": false,
+      "statistic": 0.0387,
+      "p_value": 0.0
+    },
+    {
+      "feature": "R_emaildomain",
+      "drifted": false,
+      "statistic": 0.0361,
+      "p_value": 0.0
+    },
+    {
+      "feature": "hour",
+      "drifted": false,
+      "statistic": 0.0329,
+      "p_value": 0.0
+    },
+    {
+      "feature": "is_night",
+      "drifted": false,
+      "statistic": 0.0299,
+      "p_value": 0.0
+    },
+    {
+      "feature": "uid_amt_mean",
+      "drifted": false,
+      "statistic": 0.0259,
+      "p_value": 0.0
+    },
+    {
+      "feature": "R_is_free_email",
+      "drifted": false,
+      "statistic": 0.0235,
+      "p_value": 0.0
+    },
+    {
+      "feature": "day_of_week",
+      "drifted": false,
+      "statistic": 0.0205,
+      "p_value": 0.0
+    },
+    {
+      "feature": "card_amt_std",
+      "drifted": false,
+      "statistic": 0.0184,
+      "p_value": 0.0001
+    },
+    {
+      "feature": "P_is_free_email",
+      "drifted": false,
+      "statistic": 0.0176,
+      "p_value": 0.0003
+    },
+    {
+      "feature": "P_emaildomain",
+      "drifted": false,
+      "statistic": 0.0169,
+      "p_value": 0.0006
+    },
+    {
+      "feature": "TransactionAmt",
+      "drifted": false,
+      "statistic": 0.0147,
+      "p_value": 0.0042
+    },
+    {
+      "feature": "amt_log",
+      "drifted": false,
+      "statistic": 0.0147,
+      "p_value": 0.0042
+    },
+    {
+      "feature": "card_unique_addr",
+      "drifted": false,
+      "statistic": 0.0119,
+      "p_value": 0.0349
+    },
+    {
+      "feature": "card_txn_count",
+      "drifted": false,
+      "statistic": 0.0114,
+      "p_value": 0.0469
+    },
+    {
+      "feature": "amt_to_card_mean_ratio",
+      "drifted": false,
+      "statistic": 0.0103,
+      "p_value": 0.0942
+    },
+    {
+      "feature": "amt_z_score_card",
+      "drifted": false,
+      "statistic": 0.0103,
+      "p_value": 0.0975
+    },
+    {
+      "feature": "card_unique_email",
+      "drifted": false,
+      "statistic": 0.0094,
+      "p_value": 0.1591
+    }
+  ]
+}

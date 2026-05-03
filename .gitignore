@@ -1,0 +1,11 @@
+data/*
+!data/.gitkeep
+venv/
+mlruns/
+mlflow.db
+models/*.txt
+models/drift_report.html
+models/*.png
+__pycache__/
+*.pyc
+.env

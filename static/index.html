@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FraudShield</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --surface2:#222536; --surface3:#2a2e42;
+  --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.15);
+  --text:#f0f2f8; --muted:#b0b4c4; --muted2:#8a8e9e;
+  --red:#e24b4a; --red-bg:rgba(226,75,74,0.12); --red-border:rgba(226,75,74,0.3);
+  --amber:#ef9f27; --amber-bg:rgba(239,159,39,0.12);
+  --green:#1d9e75; --green-bg:rgba(29,158,117,0.12);
+  --blue:#378add; --blue-bg:rgba(55,138,221,0.12);
+  --r:10px; --rs:6px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.6; min-height: 100vh;
+}
+
+/* Nav */
+.nav {
+  display: flex; align-items: center;
+  padding: 0 32px; background: var(--surface);
+  border-bottom: 0.5px solid var(--border2);
+  height: 56px; position: sticky; top: 0; z-index: 100;
+}
+.nav-logo { font-size: 17px; font-weight: 700; color: var(--text); margin-right: 36px; letter-spacing: -0.02em; }
+.nav-logo span { color: var(--blue); }
+.nav-tab {
+  padding: 0 18px; height: 56px; display: flex; align-items: center;
+  font-size: 13px; font-weight: 500; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.status-txt { font-size: 13px; color: var(--muted); }
+
+/* Pages */
+.page { display: none; padding: 24px 32px; }
+.page.active { display: block; }
+
+/* Metrics */
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; margin-bottom: 24px; }
+.metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r); padding: 20px; }
+.metric-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+.metric-value { font-size: 34px; font-weight: 700; color: var(--text); line-height: 1; }
+.metric-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* Grids */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px; }
+.mb { margin-bottom: 20px; }
+
+/* Panel */
+.panel { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r); padding: 22px; }
+.panel-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.panel-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+
+/* Feed table */
+.feed-header {
+  display: grid;
+  grid-template-columns: 96px 1fr 92px 64px 96px;
+  gap: 10px; padding: 6px 0 8px;
+  border-bottom: 0.5px solid var(--border2); margin-bottom: 4px;
+}
+.feed-col-label { font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.07em; }
+.feed-col-label.right  { text-align: right; }
+.feed-col-label.center { text-align: center; }
+
+.feed-item {
+  display: grid;
+  grid-template-columns: 96px 1fr 92px 64px 96px;
+  gap: 10px; align-items: center;
+  padding: 9px 0; border-bottom: 0.5px solid var(--border);
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:none} }
+.feed-item:last-child { border-bottom: none; }
+.feed-amt  { font-size: 14px; font-weight: 600; color: var(--text); }
+.feed-meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-time { font-size: 12px; color: var(--muted2); text-align: right; }
+.feed-actual { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 3px; text-align: center; }
+.actual-fraud { background: rgba(226,75,74,0.2); color: var(--red); }
+.actual-legit { background: rgba(29,158,117,0.2); color: var(--green); }
+.pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; text-align: right; display: block; }
+.pill-high   { background: var(--red-bg);   color: var(--red);   }
+.pill-medium { background: var(--amber-bg); color: var(--amber); }
+.pill-low    { background: var(--green-bg); color: var(--green); }
+.feed-empty  { color: var(--muted2); font-size: 14px; padding: 30px 0; text-align: center; }
+
+/* Last fraud block */
+.fraud-block {
+  background: rgba(226,75,74,0.07);
+  border: 0.5px solid var(--red-border);
+  border-radius: var(--r); padding: 18px;
+}
+.fraud-block-empty { color: var(--muted2); font-size: 13px; padding: 20px 0; text-align: center; }
+.fraud-score-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.fraud-score-big { font-size: 42px; font-weight: 700; color: var(--red); line-height: 1; }
+.fraud-score-meta { display: flex; flex-direction: column; gap: 3px; }
+.fraud-verdict { font-size: 13px; font-weight: 600; color: var(--red); }
+.fraud-detail  { font-size: 12px; color: var(--muted); }
+.fraud-divider { border: none; border-top: 0.5px solid var(--red-border); margin: 12px 0; }
+.shap-title    { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+.shap-row      { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+.shap-row:last-child { border-bottom: none; }
+.shap-desc     { font-size: 13px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shap-bar-wrap { width: 80px; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.shap-bar      { height: 100%; border-radius: 3px; }
+.shap-up       { background: var(--red); }
+.shap-down     { background: var(--green); }
+.shap-val      { font-size: 12px; font-weight: 600; min-width: 48px; text-align: right; }
+.shap-val.up   { color: var(--red); }
+.shap-val.down { color: var(--green); }
+
+/* Sliders */
+.slider-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 18px; }
+.slider-row { display: flex; flex-direction: column; gap: 6px; }
+.slider-label { display: flex; justify-content: space-between; align-items: center; }
+.slider-name { font-size: 13px; color: var(--muted); }
+.slider-val  { font-size: 14px; font-weight: 600; color: var(--text); }
+input[type=range] { width: 100%; height: 4px; border-radius: 2px; background: var(--surface3); outline: none; cursor: pointer; -webkit-appearance: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--blue); cursor: pointer; }
+.select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; color: var(--muted); }
+.field select {
+  background: var(--surface2); border: 0.5px solid var(--border2);
+  border-radius: var(--rs); padding: 9px 12px;
+  font-size: 13px; color: var(--text); outline: none; width: 100%; cursor: pointer;
+}
+.field select:focus { border-color: var(--blue); }
+.field select option { background: var(--surface2); }
+
+/* Result box */
+.result-box { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: var(--r); padding: 18px; display: none; margin-top: 16px; }
+.result-box.visible { display: block; }
+.gauge-wrap { text-align: center; padding: 10px 0 6px; }
+.gauge-score  { font-size: 54px; font-weight: 700; line-height: 1; }
+.gauge-label  { font-size: 14px; font-weight: 600; margin-top: 8px; }
+.gauge-sub    { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.shap-section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin: 18px 0 10px; }
+.score-btn { width: 100%; padding: 12px; background: var(--blue); border: none; border-radius: var(--rs); font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity 0.15s; }
+.score-btn:hover { opacity: 0.85; }
+.score-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.error-msg { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
+.error-msg.visible { display: block; }
+.result-placeholder { color: var(--muted2); font-size: 14px; padding: 40px 0; text-align: center; }
+
+/* Analytics */
+.bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.bar-label { font-size: 13px; color: var(--muted); width: 90px; flex-shrink: 0; text-align: right; }
+.bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.bar-pct   { font-size: 13px; color: var(--muted); min-width: 44px; text-align: right; }
+
+/* Model info */
+.info-table { width: 100%; border-collapse: collapse; }
+.info-table tr { border-bottom: 0.5px solid var(--border); }
+.info-table tr:last-child { border-bottom: none; }
+.info-table td { padding: 10px 4px; font-size: 13px; }
+.info-table td:first-child { color: var(--muted); width: 50%; }
+.info-table td:last-child  { font-weight: 500; color: var(--text); }
+.threshold-table { width: 100%; border-collapse: collapse; }
+.threshold-table th { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 9px 8px; text-align: left; border-bottom: 0.5px solid var(--border2); }
+.threshold-table td { padding: 10px 8px; font-size: 13px; border-bottom: 0.5px solid var(--border); }
+.threshold-table tr:last-child td { border-bottom: none; }
+
+/* Drift */
+.drift-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+.drift-row:last-child { border-bottom: none; }
+.drift-feat { color: var(--muted); font-family: monospace; font-size: 12px; }
+.drift-ok   { color: var(--green); font-weight: 600; font-size: 12px; }
+.drift-warn { color: var(--amber); font-weight: 600; font-size: 12px; }
+.drift-note { font-size: 12px; color: var(--muted2); margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--border); line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">Fraud<span>Shield</span></div>
+  <div class="nav-tab active" onclick="showPage('monitor',this)">Live Monitor</div>
+  <div class="nav-tab" onclick="showPage('analytics',this)">Analytics</div>
+  <div class="nav-tab" onclick="showPage('playground',this)">Playground</div>
+  <div class="nav-tab" onclick="showPage('model',this)">Model Info</div>
+  <div class="nav-right">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="status-txt" id="status-txt">Connecting...</span>
+  </div>
+</nav>
+
+<!-- PAGE 1: Live Monitor -->
+<div class="page active" id="page-monitor">
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Transactions scored</div>
+      <div class="metric-value" id="m-total">0</div>
+      <div class="metric-sub">since API startup</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Fraud flagged</div>
+      <div class="metric-value" id="m-fraud">0</div>
+      <div class="metric-sub" id="m-rate">0.0% fraud rate</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg latency</div>
+      <div class="metric-value" id="m-latency">0</div>
+      <div class="metric-sub">milliseconds end-to-end</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Model AUC</div>
+      <div class="metric-value">0.917</div>
+      <div class="metric-sub">LightGBM · 452 features</div>
+    </div>
+  </div>
+
+  <!-- Row 1: feed + timeline -->
+  <div class="grid-2 mb" style="align-items:stretch;">
+    <div class="panel" style="display:flex;flex-direction:column;">
+      <div class="panel-title">Live transaction feed</div>
+      <div class="panel-desc">Real transactions scored in real time. Run <code>python src/replay.py</code> to stream the test dataset. The Actual column shows ground truth labels when replaying labeled data.</div>
+      <div class="feed-header">
+        <span class="feed-col-label">Amount</span>
+        <span class="feed-col-label">Card · Email domain</span>
+        <span class="feed-col-label right">Time</span>
+        <span class="feed-col-label center">Actual</span>
+        <span class="feed-col-label right">Score</span>
+      </div>
+      <div id="feed" style="flex:1;">
+        <div class="feed-empty">Waiting for transactions...</div>
+      </div>
+    </div>
+
+    <div class="panel" style="display:flex;flex-direction:column;">
+      <div class="panel-title">Fraud score timeline</div>
+      <div class="panel-desc">Each point is one transaction scored in real time. Dots above 0.7 (red zone) are flagged as high risk. Sudden clusters of red points signal a fraud spike.</div>
+      <div style="position:relative;flex:1;min-height:260px;">
+        <canvas id="score-timeline"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: last fraud block -->
+  <div class="panel mb">
+    <div class="panel-title">Last high risk transaction</div>
+    <div class="panel-desc">Most recent transaction scoring above 0.7. SHAP values show exactly which features drove the score up or down.</div>
+    <div id="last-fraud-content">
+      <div class="fraud-block-empty">No high risk transactions yet. Waiting for replay...</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: Analytics -->
+<div class="page" id="page-analytics">
+  <div class="grid-2 mb">
+    <div class="panel">
+      <div class="panel-title">Fraud rate by hour of day</div>
+      <div class="panel-desc">Fraud peaks sharply at 7am (10.6%). Fraudsters exploit early-morning windows when automated monitoring is lowest and transaction volume is minimal.</div>
+      <canvas id="chart-hour" height="180"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Fraud rate by card network</div>
+      <div class="panel-desc">Discover cards show the highest fraud rate (7.7%). American Express shows the lowest (2.9%) reflecting stronger issuer-side controls.</div>
+      <canvas id="chart-card" height="180"></canvas>
+    </div>
+  </div>
+  <div class="grid-2 mb">
+    <div class="panel">
+      <div class="panel-title">Fraud rate by email domain — top 10</div>
+      <div class="panel-desc">mail.com shows an 18.9% fraud rate, nearly 5x the overall average. Domains like outlook.es and aim.com appear disproportionately in fraud transactions.</div>
+      <canvas id="chart-domain" height="220"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Transaction amount distribution</div>
+      <div class="panel-desc">Fraud transactions (red) concentrate at specific price points under $200. Legitimate transactions (green) show a wider spread.</div>
+      <canvas id="chart-amount" height="220"></canvas>
+    </div>
+  </div>
+  <div class="grid-2 mb">
+    <div class="panel">
+      <div class="panel-title">Card age at time of transaction</div>
+      <div class="panel-desc">Fraud transactions (red) concentrate heavily at day 0. Stolen cards are used immediately. Cards under 30 days old are 4x more likely to be fraudulent.</div>
+      <canvas id="chart-age" height="200"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Top fraud signals — SHAP importance</div>
+      <div class="panel-desc">Mean absolute SHAP value measures how much each feature moves the fraud score on average. C13 (billing address count) is the strongest single signal.</div>
+      <div id="shap-bars" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: Playground -->
+<div class="page" id="page-playground">
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Score a transaction</div>
+      <div class="panel-desc">Adjust the sliders and dropdowns to define a transaction. The model scores it in real time against 452 engineered features. Try dragging card age to 0 or selecting mail.com to see the fraud score respond.</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-label"><span class="slider-name">Transaction amount</span><span class="slider-val" id="lbl-amount">$500</span></div>
+          <input type="range" id="sl-amount" min="1" max="5000" value="500" step="1" oninput="document.getElementById('lbl-amount').textContent='$'+this.value; debouncedScore()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="slider-name">Card age (days)</span><span class="slider-val" id="lbl-age">120 days</span></div>
+          <input type="range" id="sl-age" min="0" max="730" value="120" step="1" oninput="document.getElementById('lbl-age').textContent=this.value+' days'; debouncedScore()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="slider-name">Hour of day</span><span class="slider-val" id="lbl-hour">14:00</span></div>
+          <input type="range" id="sl-hour" min="0" max="23" value="14" step="1" oninput="document.getElementById('lbl-hour').textContent=this.value+':00'; debouncedScore()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="slider-name">Card transaction count</span><span class="slider-val" id="lbl-txncount">50</span></div>
+          <input type="range" id="sl-txncount" min="1" max="500" value="50" step="1" oninput="document.getElementById('lbl-txncount').textContent=this.value; debouncedScore()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="slider-name">Unique addresses on card</span><span class="slider-val" id="lbl-addrs">1</span></div>
+          <input type="range" id="sl-addrs" min="1" max="20" value="1" step="1" oninput="document.getElementById('lbl-addrs').textContent=this.value; debouncedScore()">
+        </div>
+      </div>
+      <div class="select-row">
+        <div class="field"><label>Card network</label>
+          <select id="sel-card4" onchange="debouncedScore()">
+            <option value="visa">Visa</option>
+            <option value="mastercard">Mastercard</option>
+            <option value="american express">Amex</option>
+            <option value="discover">Discover</option>
+          </select>
+        </div>
+        <div class="field"><label>Card type</label>
+          <select id="sel-card6" onchange="debouncedScore()">
+            <option value="credit">Credit</option>
+            <option value="debit">Debit</option>
+          </select>
+        </div>
+        <div class="field"><label>Purchaser email domain</label>
+          <select id="sel-email" onchange="debouncedScore()">
+            <option value="gmail.com">gmail.com — 4.3% fraud rate</option>
+            <option value="hotmail.com">hotmail.com — 5.3%</option>
+            <option value="outlook.com">outlook.com — 9.5%</option>
+            <option value="mail.com">mail.com — 18.9%</option>
+            <option value="aim.com">aim.com — 12.7%</option>
+            <option value="unknown">unknown</option>
+          </select>
+        </div>
+        <div class="field"><label>Device type</label>
+          <select id="sel-device" onchange="debouncedScore()">
+            <option value="desktop">Desktop</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+      </div>
+      <button class="score-btn" id="score-btn" onclick="scoreTransaction()">Score transaction</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Prediction result</div>
+      <div class="panel-desc">Fraud probability from LightGBM. SHAP values show which features pushed the score up (red) or down (green) and by how much.</div>
+      <div class="result-placeholder" id="result-placeholder">Adjust inputs and click Score transaction</div>
+      <div class="result-box" id="result-box">
+        <div class="gauge-wrap">
+          <div class="gauge-score" id="r-score">0.000</div>
+          <div class="gauge-label" id="r-verdict">—</div>
+          <div class="gauge-sub"  id="r-latency">—</div>
+        </div>
+        <div class="shap-section-title">Why this score — top contributing features</div>
+        <div id="r-shap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: Model Info -->
+<div class="page" id="page-model">
+  <div class="grid-2 mb">
+    <div class="panel">
+      <div class="panel-title">Model details</div>
+      <div class="panel-desc">Training configuration and dataset statistics for the deployed LightGBM model.</div>
+      <table class="info-table">
+        <tr><td>Algorithm</td><td>LightGBM (leaf-wise gradient boosting)</td></tr>
+        <tr><td>Training dataset</td><td>IEEE-CIS Fraud Detection (Kaggle)</td></tr>
+        <tr><td>Training transactions</td><td>472,432 — first 80% by time</td></tr>
+        <tr><td>Test transactions</td><td>118,108 — last 20% by time</td></tr>
+        <tr><td>Total features</td><td>452 engineered features</td></tr>
+        <tr><td>Class imbalance</td><td>27.5:1 (legit to fraud)</td></tr>
+        <tr><td>Imbalance handling</td><td>scale_pos_weight = 27.5</td></tr>
+        <tr><td>Training date</td><td>April 19, 2026</td></tr>
+        <tr><td>Early stopping round</td><td>156 of 2000</td></tr>
+        <tr><td>Learning rate</td><td>0.05</td></tr>
+        <tr><td>Num leaves</td><td>128</td></tr>
+        <tr><td>Explainability</td><td>SHAP TreeExplainer</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Performance at different thresholds</div>
+      <div class="panel-desc">Precision = of all flagged transactions, what fraction are actually fraud. Recall = of all actual fraud, what fraction did we catch. Lower threshold catches more fraud but flags more legitimate transactions.</div>
+      <table class="threshold-table">
+        <thead><tr><th>Threshold</th><th>Precision</th><th>Recall</th><th>Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>0.3</strong></td><td style="color:var(--amber)">15.9%</td><td style="color:var(--green)">83.3%</td><td style="color:var(--muted)">Catch more, more false alarms</td></tr>
+          <tr><td><strong>0.4</strong></td><td style="color:var(--amber)">20.5%</td><td style="color:var(--green)">77.0%</td><td style="color:var(--muted)">Balanced — recommended</td></tr>
+          <tr><td><strong>0.5</strong></td><td style="color:var(--green)">25.8%</td><td style="color:var(--amber)">70.3%</td><td style="color:var(--muted)">Fewer false alarms</td></tr>
+          <tr><td><strong>0.6</strong></td><td style="color:var(--green)">33.0%</td><td style="color:var(--red)">63.9%</td><td style="color:var(--muted)">High precision only</td></tr>
+          <tr><td><strong>0.7</strong></td><td style="color:var(--green)">41.2%</td><td style="color:var(--red)">55.1%</td><td style="color:var(--muted)">Conservative — high confidence only</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="grid-3 mb">
+    <div class="panel">
+      <div class="panel-title">Baseline comparison</div>
+      <div class="panel-desc">Logistic regression baseline AUC 0.848. LightGBM improves this by capturing non-linear feature relationships.</div>
+      <table class="info-table">
+        <tr><td>Logistic Regression</td><td style="color:var(--muted)">AUC 0.848</td></tr>
+        <tr><td>LightGBM v1</td><td style="color:var(--amber)">AUC 0.867</td></tr>
+        <tr><td>LightGBM v2</td><td style="color:var(--green)">AUC 0.917</td></tr>
+        <tr><td>Key fix</td><td style="color:var(--blue)">Frequency encoding</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Infrastructure</div>
+      <div class="panel-desc">Production-grade serving stack containerized with Docker Compose.</div>
+      <table class="info-table">
+        <tr><td>Model serving</td><td>FastAPI + Uvicorn</td></tr>
+        <tr><td>Feature store</td><td>Redis — card behavioral history</td></tr>
+        <tr><td>Containerization</td><td>Docker Compose</td></tr>
+        <tr><td>Experiment tracking</td><td>MLflow</td></tr>
+        <tr><td>Avg inference latency</td><td id="inf-latency">—</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Drift monitoring</div>
+      <div class="panel-desc">Evidently AI compares training vs held-out test distributions using Wasserstein distance. Run <code>python src/drift_report.py</code> to refresh.</div>
+      <div id="drift-content">
+        <div style="color:var(--muted2);font-size:13px;padding:10px 0;">Loading drift data...</div>
+      </div>
+      <div class="drift-note" id="drift-note"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API          = 'http://127.0.0.1:8000';
+let latencies      = [];
+let scoreDebounce  = null;
+let analyticsLoaded = false;
+let timelineChart  = null;
+let lastFraud      = null;
+
+function showPage(id, tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  tab.classList.add('active');
+  if (id === 'analytics' && !analyticsLoaded) loadAnalytics();
+  if (id === 'model') loadDriftSummary();
+}
+
+async function pollHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    document.getElementById('status-dot').style.background = 'var(--green)';
+    document.getElementById('status-txt').textContent = 'System live';
+    document.getElementById('m-total').textContent = d.request_count.toLocaleString();
+    document.getElementById('m-fraud').textContent = d.fraud_count.toLocaleString();
+    document.getElementById('m-rate').textContent  = d.request_count > 0
+      ? (d.fraud_rate * 100).toFixed(1) + '% fraud rate' : '0.0% fraud rate';
+    const latEl = document.getElementById('inf-latency');
+    if (latEl && latencies.length > 0)
+      latEl.textContent = Math.round(latencies.reduce((a,b)=>a+b)/latencies.length) + 'ms';
+  } catch {
+    document.getElementById('status-dot').style.background = 'var(--red)';
+    document.getElementById('status-txt').textContent = 'API offline';
+  }
+}
+
+async function pollFeed() {
+  try {
+    const r     = await fetch(`${API}/recent`);
+    const items = await r.json();
+    if (!items.length) return;
+
+    const feed = document.getElementById('feed');
+    const ph   = feed.querySelector('.feed-empty');
+    if (ph) ph.remove();
+    feed.innerHTML = '';
+
+    items.forEach(txn => {
+      const score = txn.score;
+      const pc    = score >= 0.7 ? 'pill-high' : score >= 0.35 ? 'pill-medium' : 'pill-low';
+      const pl    = score >= 0.7 ? 'HIGH' : score >= 0.35 ? 'MED' : 'LOW';
+      const el    = document.createElement('div');
+      el.className = 'feed-item';
+
+      let actualBadge = '<span></span>';
+      if (txn.actual !== undefined && txn.actual !== null)
+        actualBadge = `<span class="feed-actual ${txn.actual===1?'actual-fraud':'actual-legit'}">${txn.actual===1?'FRAUD':'legit'}</span>`;
+
+      el.innerHTML = `
+        <span class="feed-amt">$${txn.amount.toFixed(2)}</span>
+        <span class="feed-meta">${txn.card||'—'} · ${txn.email||'—'}</span>
+        <span class="feed-time">${txn.timestamp||''}</span>
+        ${actualBadge}
+        <span class="pill ${pc}">${score.toFixed(2)} ${pl}</span>`;
+      feed.appendChild(el);
+
+      if (txn.latency_ms) {
+        latencies.push(txn.latency_ms);
+        if (latencies.length > 30) latencies.shift();
+        document.getElementById('m-latency').textContent =
+          Math.round(latencies.reduce((a,b)=>a+b)/latencies.length);
+      }
+    });
+
+    updateTimeline(items);
+    updateLastFraud(items);
+  } catch(e) {}
+}
+
+function updateTimeline(items) {
+  const scores = [...items].reverse();
+  const labels = scores.map(t => t.timestamp || '');
+  const data   = scores.map(t => t.score);
+  const colors = data.map(s =>
+    s >= 0.7  ? 'rgba(226,75,74,1)'   :
+    s >= 0.35 ? 'rgba(239,159,39,1)'  :
+                'rgba(29,158,117,1)'
+  );
+
+  if (timelineChart) {
+    timelineChart.data.labels                           = labels;
+    timelineChart.data.datasets[0].data                = data;
+    timelineChart.data.datasets[0].pointBackgroundColor = colors;
+    timelineChart.data.datasets[0].pointBorderColor     = colors;
+    timelineChart.update('none');
+    return;
+  }
+
+  const ctx = document.getElementById('score-timeline').getContext('2d');
+  timelineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Fraud score',
+        data,
+        pointBackgroundColor: colors,
+        pointBorderColor:     colors,
+        pointRadius:          5,
+        pointHoverRadius:     8,
+        borderColor:          'rgba(255,255,255,0.1)',
+        borderWidth:          1,
+        fill:                 false,
+        tension:              0.3,
+      }]
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      animation:           false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `Score: ${ctx.parsed.y.toFixed(3)}`
+          }
+        },
+        annotation: {
+          annotations: {
+            highLine: {
+              type: 'line', yMin: 0.7, yMax: 0.7,
+              borderColor: 'rgba(226,75,74,0.6)', borderWidth: 1,
+              borderDash: [5,5],
+              label: { content: 'High risk 0.7', display: true,
+                       position: 'start', color: 'rgba(226,75,74,0.9)',
+                       font: { size: 11 }, backgroundColor: 'transparent', padding: 2 }
+            },
+            medLine: {
+              type: 'line', yMin: 0.35, yMax: 0.35,
+              borderColor: 'rgba(239,159,39,0.5)', borderWidth: 1,
+              borderDash: [5,5],
+              label: { content: 'Review 0.35', display: true,
+                       position: 'start', color: 'rgba(239,159,39,0.9)',
+                       font: { size: 11 }, backgroundColor: 'transparent', padding: 2 }
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Transaction time', color: '#b0b4c4', font: { size: 12 } },
+          ticks: { color: '#8a8e9e', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+          grid:  { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          min: 0, max: 1,
+          title: { display: true, text: 'Fraud probability', color: '#b0b4c4', font: { size: 12 } },
+          ticks: { color: '#8a8e9e', font: { size: 11 }, stepSize: 0.1, callback: v => v.toFixed(1) },
+          grid:  { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function updateLastFraud(items) {
+  const fraud = items.find(t => t.score >= 0.7);
+  if (!fraud) return;
+  if (lastFraud && lastFraud.timestamp === fraud.timestamp) return;
+  lastFraud = fraud;
+
+  const wrap = document.getElementById('last-fraud-content');
+
+  let shapHtml = '';
+  if (fraud.top_factors && fraud.top_factors.length > 0) {
+    const maxS = Math.max(...fraud.top_factors.map(f => Math.abs(f.shap_value)));
+    shapHtml = '<div class="shap-title">Why this score — SHAP feature contributions</div>';
+    fraud.top_factors.forEach(f => {
+      const isUp = f.direction === 'increases_risk';
+      const pct  = Math.round((Math.abs(f.shap_value) / maxS) * 100);
+      const sign = isUp ? '+' : '';
+      shapHtml += `
+        <div class="shap-row">
+          <span class="shap-desc" title="${f.feature}">${f.description}</span>
+          <div class="shap-bar-wrap"><div class="shap-bar ${isUp?'shap-up':'shap-down'}" style="width:${pct}%"></div></div>
+          <span class="shap-val ${isUp?'up':'down'}">${sign}${f.shap_value.toFixed(3)}</span>
+        </div>`;
+    });
+  } else {
+    shapHtml = '<div style="color:var(--muted2);font-size:13px;">SHAP data not available for this transaction.</div>';
+  }
+
+  const actualBadge = fraud.actual !== undefined && fraud.actual !== null
+    ? `<span class="feed-actual ${fraud.actual===1?'actual-fraud':'actual-legit'}" style="font-size:12px;padding:3px 10px;">
+        ${fraud.actual===1?'Actual FRAUD':'Actual legit'}
+       </span>`
+    : '';
+
+  wrap.innerHTML = `
+    <div class="fraud-block">
+      <div class="fraud-score-row">
+        <div class="fraud-score-big">${fraud.score.toFixed(3)}</div>
+        <div class="fraud-score-meta">
+          <span class="fraud-verdict">HIGH RISK — flagged for review</span>
+          <span class="fraud-detail">$${fraud.amount.toFixed(2)} · ${fraud.card||'unknown'} · ${fraud.email||'unknown'}</span>
+          <span class="fraud-detail">${fraud.timestamp||''} &nbsp; ${actualBadge}</span>
+        </div>
+      </div>
+      <hr class="fraud-divider">
+      ${shapHtml}
+    </div>`;
+}
+
+const chartDefaults = {
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#b0b4c4', font: { size: 12 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#b0b4c4', font: { size: 12 } } }
+  }
+};
+
+function loadAnalytics() {
+  analyticsLoaded = true;
+  fetch(`${API}/analytics`)
+    .then(r => r.json())
+    .then(d => {
+      buildHourChart(d.fraud_by_hour);
+      buildCardChart(d.fraud_by_card4);
+      buildDomainChart(d.fraud_by_domain);
+      buildAmountChart(d.fraud_amounts, d.legit_amounts);
+      buildAgeChart(d.fraud_ages, d.legit_ages);
+      buildShapBars(d.shap_importance);
+    })
+    .catch(() => {
+      buildHourChart(HOUR_DATA);
+      buildCardChart(CARD_DATA);
+      buildDomainChart(DOMAIN_DATA);
+      buildAmountChart(FRAUD_AMT, LEGIT_AMT);
+      buildAgeChart(FRAUD_AGE, LEGIT_AGE);
+      buildShapBars(SHAP_DATA);
+    });
+}
+
+function buildHourChart(fh) {
+  const hours = Array.from({length:24},(_,i)=>i);
+  const rates = hours.map(h=>((fh[h]||fh[String(h)]||0)*100).toFixed(1));
+  new Chart(document.getElementById('chart-hour'), {
+    type:'bar', data:{labels:hours.map(h=>h+':00'), datasets:[{
+      data:rates, borderRadius:3,
+      backgroundColor:rates.map(r=>parseFloat(r)>7?'rgba(226,75,74,0.75)':parseFloat(r)>4?'rgba(239,159,39,0.65)':'rgba(55,138,221,0.55)')
+    }]},
+    options:{...chartDefaults,responsive:true,scales:{...chartDefaults.scales,y:{...chartDefaults.scales.y,ticks:{...chartDefaults.scales.y.ticks,callback:v=>v+'%'}}}}
+  });
+}
+
+function buildCardChart(cd) {
+  const labels=Object.keys(cd), rates=labels.map(k=>(cd[k].rate*100).toFixed(1));
+  new Chart(document.getElementById('chart-card'), {
+    type:'bar', data:{labels,datasets:[{data:rates,borderRadius:4,
+      backgroundColor:['rgba(55,138,221,0.6)','rgba(55,138,221,0.6)','rgba(29,158,117,0.6)','rgba(226,75,74,0.6)']}]},
+    options:{...chartDefaults,responsive:true,scales:{...chartDefaults.scales,y:{...chartDefaults.scales.y,ticks:{...chartDefaults.scales.y.ticks,callback:v=>v+'%'}}}}
+  });
+}
+
+function buildDomainChart(dd) {
+  const labels=Object.keys(dd), rates=labels.map(k=>(dd[k].rate*100).toFixed(1));
+  new Chart(document.getElementById('chart-domain'), {
+    type:'bar', data:{labels,datasets:[{data:rates,borderRadius:3,
+      backgroundColor:rates.map(r=>parseFloat(r)>10?'rgba(226,75,74,0.75)':parseFloat(r)>5?'rgba(239,159,39,0.65)':'rgba(55,138,221,0.55)')}]},
+    options:{indexAxis:'y',...chartDefaults,responsive:true,scales:{...chartDefaults.scales,x:{...chartDefaults.scales.x,ticks:{...chartDefaults.scales.x.ticks,callback:v=>v+'%'}}}}
+  });
+}
+
+function buildAmountChart(fa, la) {
+  const bins=[0,25,50,100,150,200,300,500,1000,5000];
+  const bin=v=>bins.findIndex((b,i)=>v>=b&&v<(bins[i+1]||Infinity));
+  const fc=Array(bins.length).fill(0), lc=Array(bins.length).fill(0);
+  fa.forEach(v=>{const b=bin(v);if(b>=0)fc[b]++;});
+  la.forEach(v=>{const b=bin(v);if(b>=0)lc[b]++;});
+  new Chart(document.getElementById('chart-amount'), {
+    type:'bar', data:{labels:bins.map((b,i)=>'$'+b+(bins[i+1]?'–$'+bins[i+1]:'+')),
+      datasets:[{label:'Fraud',data:fc,backgroundColor:'rgba(226,75,74,0.65)',borderRadius:3},
+                {label:'Legit',data:lc,backgroundColor:'rgba(29,158,117,0.55)',borderRadius:3}]},
+    options:{...chartDefaults,responsive:true,plugins:{legend:{display:true,labels:{color:'#b0b4c4',font:{size:12}}}}}
+  });
+}
+
+function buildAgeChart(fa, la) {
+  const bins=[0,7,30,90,180,365,730,9999];
+  const labels=['0 to 7d','7 to 30d','30 to 90d','90 to 180d','180d to 1yr','1 to 2yr','2yr+'];
+  const bin=v=>bins.findIndex((b,i)=>v>=b&&v<(bins[i+1]||Infinity));
+  const fc=Array(labels.length).fill(0), lc=Array(labels.length).fill(0);
+  fa.forEach(v=>{const b=bin(v);if(b>=0&&b<labels.length)fc[b]++;});
+  la.forEach(v=>{const b=bin(v);if(b>=0&&b<labels.length)lc[b]++;});
+  new Chart(document.getElementById('chart-age'), {
+    type:'bar', data:{labels,
+      datasets:[{label:'Fraud',data:fc,backgroundColor:'rgba(226,75,74,0.65)',borderRadius:3},
+                {label:'Legit',data:lc,backgroundColor:'rgba(29,158,117,0.55)',borderRadius:3}]},
+    options:{...chartDefaults,responsive:true,plugins:{legend:{display:true,labels:{color:'#b0b4c4',font:{size:12}}}}}
+  });
+}
+
+function buildShapBars(sd) {
+  const wrap=document.getElementById('shap-bars'), maxVal=sd[0].value;
+  wrap.innerHTML='';
+  sd.forEach(f=>{
+    const pct=Math.round((f.value/maxVal)*100);
+    const row=document.createElement('div');
+    row.className='bar-row';
+    row.innerHTML=`
+      <span class="bar-label" title="${f.feature}">${f.feature}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--blue)"></div></div>
+      <span class="bar-pct">${f.value.toFixed(3)}</span>`;
+    wrap.appendChild(row);
+  });
+}
+
+function debouncedScore() {
+  clearTimeout(scoreDebounce);
+  scoreDebounce = setTimeout(scoreTransaction, 500);
+}
+
+async function scoreTransaction() {
+  const btn   = document.getElementById('score-btn');
+  const errEl = document.getElementById('error-msg');
+  btn.disabled = true; btn.textContent = 'Scoring...';
+  errEl.classList.remove('visible');
+
+  const age = parseFloat(document.getElementById('sl-age').value);
+  const payload = {
+    TransactionAmt:   parseFloat(document.getElementById('sl-amount').value),
+    card4:            document.getElementById('sel-card4').value,
+    card6:            document.getElementById('sel-card6').value,
+    P_emaildomain:    document.getElementById('sel-email').value,
+    hour:             parseFloat(document.getElementById('sl-hour').value),
+    card_age:         age,
+    is_new_card:      age < 30 ? 1 : 0,
+    card_txn_count:   parseFloat(document.getElementById('sl-txncount').value),
+    card_unique_addr: parseFloat(document.getElementById('sl-addrs').value),
+    is_mobile:        document.getElementById('sel-device').value === 'mobile' ? 1 : 0,
+    is_desktop:       document.getElementById('sel-device').value === 'desktop' ? 1 : 0,
+    TransactionDT:    Date.now() / 1000,
+    display_card:     document.getElementById('sel-card4').value,
+    display_email:    document.getElementById('sel-email').value.split(' ')[0],
+  };
+
+  try {
+    const r = await fetch(`${API}/predict`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    renderResult(await r.json());
+    pollHealth();
+  } catch(e) {
+    errEl.textContent = 'Could not reach API — is Docker running?';
+    errEl.classList.add('visible');
+  }
+
+  btn.disabled = false; btn.textContent = 'Score transaction';
+}
+
+function renderResult(d) {
+  const score = d.fraud_score;
+  const color = score >= 0.7 ? 'var(--red)' : score >= 0.35 ? 'var(--amber)' : 'var(--green)';
+  const ph = document.getElementById('result-placeholder');
+  if (ph) ph.style.display = 'none';
+
+  document.getElementById('r-score').textContent   = score.toFixed(3);
+  document.getElementById('r-score').style.color   = color;
+  document.getElementById('r-verdict').textContent = d.verdict;
+  document.getElementById('r-verdict').style.color = color;
+  document.getElementById('r-latency').textContent = `${d.latency_ms}ms inference`;
+
+  const shapEl = document.getElementById('r-shap');
+  shapEl.innerHTML = '';
+  const maxS = Math.max(...d.top_factors.map(f=>Math.abs(f.shap_value)));
+  d.top_factors.forEach(f => {
+    const isUp = f.direction === 'increases_risk';
+    const pct  = Math.round((Math.abs(f.shap_value)/maxS)*100);
+    const sign = isUp ? '+' : '';
+    const row  = document.createElement('div');
+    row.className = 'shap-row';
+    row.innerHTML = `
+      <span class="shap-desc" title="${f.feature}">${f.description}</span>
+      <div class="shap-bar-wrap"><div class="shap-bar ${isUp?'shap-up':'shap-down'}" style="width:${pct}%"></div></div>
+      <span class="shap-val ${isUp?'up':'down'}">${sign}${f.shap_value.toFixed(3)}</span>`;
+    shapEl.appendChild(row);
+  });
+
+  document.getElementById('result-box').classList.add('visible');
+}
+
+async function loadDriftSummary() {
+  try {
+    const r = await fetch(`${API}/drift/summary`);
+    const d = await r.json();
+    if (d.status === 'not_run') return;
+
+    const wrap = document.getElementById('drift-content');
+    wrap.innerHTML = '';
+    d.feature_results.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'drift-row';
+      row.innerHTML = `
+        <span class="drift-feat">${f.feature}</span>
+        <span style="font-size:12px;color:var(--muted2);">KS ${f.statistic}</span>
+        <span class="${f.drifted?'drift-warn':'drift-ok'}">${f.drifted?'Drifting':'Stable'}</span>`;
+      wrap.appendChild(row);
+    });
+
+    document.getElementById('drift-note').textContent =
+      `Last checked: ${d.checked_at}  ·  ${d.features_drifted}/${d.features_checked} features drifting  ·  Reference: ${d.reference_size.toLocaleString()} rows`;
+  } catch(e) {}
+}
+
+// Hardcoded fallback analytics
+const HOUR_DATA   = {"0":0.0314,"1":0.0313,"2":0.0375,"3":0.0383,"4":0.0519,"5":0.0703,"6":0.0777,"7":0.1061,"8":0.093,"9":0.09,"10":0.0532,"11":0.0388,"12":0.0304,"13":0.0229,"14":0.0242,"15":0.0254,"16":0.0295,"17":0.0315,"18":0.0352,"19":0.0347,"20":0.0343,"21":0.034,"22":0.0327,"23":0.037};
+const CARD_DATA   = {"american express":{"rate":0.0287,"count":8328},"discover":{"rate":0.0773,"count":6651},"mastercard":{"rate":0.0343,"count":189217},"visa":{"rate":0.0348,"count":384767}};
+const DOMAIN_DATA = {"mail.com":{"rate":0.1896,"count":559},"outlook.es":{"rate":0.1301,"count":438},"aim.com":{"rate":0.127,"count":315},"outlook.com":{"rate":0.0946,"count":5096},"hotmail.es":{"rate":0.0656,"count":305},"live.com.mx":{"rate":0.0547,"count":749},"hotmail.com":{"rate":0.053,"count":45250},"gmail.com":{"rate":0.0435,"count":228355},"embarqmail.com":{"rate":0.0346,"count":260},"mac.com":{"rate":0.0321,"count":436}};
+const FRAUD_AMT   = [44,39.47,31.48,21.99,59,66.46,54.29,994,30.81,54,22.01,12.57,123.26,25,120.75,81.77,100,35.91,58.9,437,56.43,16.43,10.88,141,150,70.7,9.06,300,8.46,480,49,44,61.56,27.98,53.95,117,150,17.75,200,150];
+const LEGIT_AMT   = [25,200,146,57.95,49,250,149.95,97,59,117,57.95,221.99,117,112.99,400,25,500,518.85,15,335,26.95,90,97,117,35.95,226,100,25.95,58.95,26.82,200,75,198.48,50,107.95,184.95,35.95,29.42,226,335];
+const FRAUD_AGE   = [0,65,0,4,172,0,284,0,85,181,0,9,0,28,0,0,28,0,0,0,0,0,9,63,0,179,0,0,0,0,0,0,25,0,0,0,0,1,11,0];
+const LEGIT_AGE   = [172,2,0,0,1,0,141,503,0,0,614,294,0,0,0,132,423,0,0,85,42,49,313,12,5,0,0,0,0,0,0,0,0,0,0,295,605,519,137,80];
+const SHAP_DATA   = [{"feature":"C13","description":"Billing address count","value":0.224},{"feature":"V70","description":"Vesta risk score (device)","value":0.166},{"feature":"C14","description":"Address count variant","value":0.154},{"feature":"card6","description":"Card type (credit/debit)","value":0.129},{"feature":"TransactionAmt","description":"Transaction amount","value":0.129},{"feature":"card_txn_count","description":"Card transaction count","value":0.114},{"feature":"C1","description":"Address count (C1)","value":0.11},{"feature":"R_emaildomain","description":"Recipient email domain rate","value":0.109},{"feature":"card_time_since_first","description":"Time since card first seen","value":0.101},{"feature":"D1","description":"Days since card first used","value":0.101}];
+
+pollHealth();
+pollFeed();
+setInterval(pollHealth, 5000);
+setInterval(pollFeed, 2000);
+</script>
+</body>
+</html>

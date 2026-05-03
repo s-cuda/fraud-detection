@@ -1,0 +1,12 @@
+pandas
+numpy
+scikit-learn
+lightgbm
+shap
+fastapi
+uvicorn
+pydantic
+redis
+evidently
+gradio
+python-dotenv
